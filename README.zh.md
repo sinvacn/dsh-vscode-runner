@@ -180,6 +180,8 @@ npm test
 | `locale/{en,zh}.json` | 插件管理器的标题与描述 |
 | `icon.svg` | 插件图标 |
 | `test/run.mjs` | 自包含测试套件 |
+| `CHANGELOG.md` | 版本记录 |
+| `SECURITY.md` | 私下报告安全问题 |
 
 ## 许可
 

@@ -180,6 +180,8 @@ For implementation details, see [docs/internals.md](docs/internals.md).
 | `locale/{en,zh}.json` | Plugin Manager title and description |
 | `icon.svg` | Plugin icon |
 | `test/run.mjs` | Self-contained test suite |
+| `CHANGELOG.md` | Release notes |
+| `SECURITY.md` | Private vulnerability reporting |
 
 ## License
 
