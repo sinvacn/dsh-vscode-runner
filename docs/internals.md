@@ -155,7 +155,7 @@ npm test
 
 Fixtures are created under `os.tmpdir()`, so the suite never reads the repository's own `.vscode` files. `spawnWithPipes` implements the small part of the DSH subprocess handle used by `Runner`: `stdin`, `collected.stdout/stderr.readFrom(offset)`, `done`, `terminate()`.
 
-CI runs the suite on Ubuntu, macOS and Windows with Node 20 and 22. Execution tests that need POSIX `read`/`sleep` are skipped on Windows; compilation, discovery and quoting tests still run.
+CI runs the suite on Ubuntu and Windows with Node 20 and 22; macOS is the primary development machine and is tested locally. Execution tests that need POSIX `read`/`sleep` are skipped on Windows; compilation, discovery and quoting tests still run.
 
 ## Debugging
 
