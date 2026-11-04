@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+- use a single Session-header play icon as the only entry point;
+- remove the redundant sidebar **Run Configurations** page and its route-level
+  navigation;
+- starting a configuration now switches the dialog to an in-dialog runs view
+  with live logs, stop and stdin;
+- re-open run history from the dialog's **Runs** footer button.
+
 ## 0.1.0
 
 Initial public release, migrated from the local `@local/dsh-vscode-runner`

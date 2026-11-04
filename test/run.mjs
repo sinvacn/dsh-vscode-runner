@@ -11,6 +11,7 @@ import { spawn as childSpawn } from 'node:child_process'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import vm from 'node:vm'
 import { buildCatalog, parseJsonc, quoteArg, Runner } from '../core.js'
 import { apply } from '../index.js'
 
@@ -518,6 +519,45 @@ async function testExecution() {
   }
 }
 
+async function testClientBundle() {
+  const source = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+  let loaded = null
+  const react = {
+    createElement: () => null,
+    Fragment: Symbol('Fragment'),
+    useState: () => [undefined, () => {}],
+    useEffect: () => {},
+    useMemo: () => undefined,
+    useRef: () => ({ current: null }),
+  }
+  const primitives = { Modal: () => null }
+  const fakeWindow = {
+    __ModuleLoader__: {
+      load(value) {
+        loaded = value
+      },
+    },
+  }
+  vm.runInNewContext(source, {
+    window: fakeWindow,
+    require: (id) => (id === 'react' ? react : primitives),
+    console,
+    setTimeout,
+    clearTimeout,
+    document: {
+      querySelectorAll: () => [],
+      createElement: () => ({ setAttribute() {}, remove() {} }),
+      head: { appendChild() {} },
+    },
+  })
+  assert(loaded !== null, 'client bundle registers with the module loader')
+  assert.equal(loaded.id, 'dsh-vscode-runner')
+  const plugin = loaded.factory((id) => (id === 'react' ? react : primitives))
+  assert.equal(typeof plugin.apply, 'function')
+  assert.deepEqual(Array.from(plugin.inject), ['slots', 'locale'])
+  console.log('  client bundle: ok')
+}
+
 async function testHostWiring() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'dsh-runner-host-'))
   try {
@@ -563,14 +603,12 @@ async function testHostWiring() {
     assert.deepEqual(
       routes.map((route) => route.path).sort(),
       [
-        '/vscode-runner/catalog',
         '/vscode-runner/devices',
         '/vscode-runner/input',
         '/vscode-runner/runs',
         '/vscode-runner/session-catalog',
         '/vscode-runner/start',
         '/vscode-runner/stop',
-        '/vscode-runner/workspaces',
       ],
     )
     assert.equal(tools.length, 1)
@@ -594,5 +632,6 @@ await testSameDirectoryWorkspace()
 await testWorkspaceRootFor()
 await testQuoting()
 await testExecution()
+await testClientBundle()
 await testHostWiring()
 console.log('all tests passed')

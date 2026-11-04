@@ -14,7 +14,7 @@
 - **单工程与多根工作区**：单 folder 工程读取自身 `.vscode`；`.code-workspace` 同时读取工作区级 `launch` / `tasks` 和每个 folder 的 `.vscode`。
 - **VS Code 变量替换**：`${workspaceFolder}`、`${workspaceFolder:名称}`、`${workspaceFolderBasename}`、`${cwd}`、`${env:NAME}`、`${config:key}`、`${userHome}`、`${pathSeparator}` 与 `${/}`。
 - **像集成终端一样运行**：支持 `cwd`、`env`、`args`、`preLaunchTask`、`dependsOn`、标准输入和停止；输出实时刷新并清理 ANSI 控制符。
-- **两个入口**：会话标题栏的浮层（搜索、分类、按子项目分组、键盘操作）和侧边栏完整页面（工作区选择、运行记录、日志、输入）。
+- **一个入口，完整运行控制**：会话标题栏播放图标打开浮层，支持搜索、分类、按子项目分组和键盘操作；启动后浮层切换到运行视图，直接查看日志、发送输入和停止，不再需要侧边栏页面。
 - **Flutter 设备选择**：没有 `deviceId` 的 Dart 配置会调用 `flutter devices --machine`；只有一台时自动使用，多台时弹出选择器。
 - **Agent 工具**：同一套引擎注册为 `vscode_launch`，可以在对话里列出、启动、停止和查看运行。
 
@@ -39,18 +39,20 @@ dsh plugin --profile desktop add github:sinvacn/dsh-vscode-runner
 点击对话标题栏的 **播放图标**。浮层会列出启动配置和任务，按配置的 `cwd`（子项目）分组，并支持搜索和分类切换。
 
 - `↑` / `↓` 移动光标，`Enter` 运行，`Esc` 关闭。
-- 正在运行的配置带绿色状态；点击可跳到完整运行页面。
+- 正在运行的配置带绿色状态；点击可打开运行视图。
 - 需要设备的 Dart 配置会先打开设备选择。
-- **打开完整运行面板** 跳到侧边栏页面。
 
-### 侧边栏完整页面
+### 运行视图
 
-左侧面板列表中的 **运行配置** 会打开完整页面：
+启动配置后，同一个浮层会切换到运行视图，并自动展开新运行：
 
-- 顶部选择工作区；
-- 查看未解析变量等提示；
-- 启动配置、查看实时日志、发送输入、停止进程；
-- 查看当前工作区的历史运行记录。
+- 实时输出（已清理 ANSI 控制符）；
+- 运行中可 **停止**；
+- 进程接受标准输入时显示输入框（例如 Flutter 的 `r` / `q`）；
+- 底部 **运行记录** 按钮可重新打开当前工作区的历史运行；
+- **返回** 回到配置列表。
+
+不需要额外的侧边栏页面或页面跳转。
 
 ### 实际执行流程
 
@@ -135,7 +137,7 @@ Host 注册 `vscode_launch`，支持：
 - 所有 Web 路由在读取文件或启动进程之前，都会先经过 `ctx.connection.requestRejection(req)`。未认证、跨站、Host/Origin 不匹配的请求会被拒绝。
 - 启动配置和任务本质上就是可执行代码。只在你信任的工作区使用，并在运行前检查 `.code-workspace` / `.vscode` 文件。
 - 环境变量不会返回给浏览器：catalog 会去掉 `env`。
-- Agent 工具与 UI 共用一个 `Runner` 实例，对话里启动的运行会显示在侧边栏。
+- Agent 工具与 UI 共用一个 `Runner` 实例，对话里启动的运行会显示在同一个浮层中。
 
 ## 限制
 
@@ -165,7 +167,8 @@ npm test
 - 同目录工作区识别；
 - 会话子目录到工作区根的解析；
 - POSIX 与 Windows 参数引用；
-- 真实子进程执行：`preLaunchTask` + `dependsOn`、标准输入、停止、后台任务保护。
+- 真实子进程执行：`preLaunchTask` + `dependsOn`、标准输入、停止、后台任务保护；
+- 通过模拟 module loader 验证 client bundle 注册。
 
 实现细节见 [docs/internals.md](docs/internals.md)。
 
@@ -175,7 +178,7 @@ npm test
 | --- | --- |
 | `core.js` | JSONC 解析、工作区发现、变量替换、catalog 编译、进程运行器 |
 | `index.js` | Host 插件：带认证的 Web 路由与 `vscode_launch` Agent 工具 |
-| `client.js` | Web UI：会话标题栏浮层、侧边栏图标/页面、配置列表、运行记录、日志、输入、设备选择 |
+| `client.js` | Web UI：会话标题栏播放图标、配置浮层、运行视图、日志、输入、设备选择 |
 | `cordis.patch.yml` | 向 DSH profile 插入 `vscode-runner` 行 |
 | `locale/{en,zh}.json` | 插件管理器的标题与描述 |
 | `icon.svg` | 插件图标 |

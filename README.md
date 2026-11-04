@@ -14,7 +14,7 @@ English | [中文](README.zh.md)
 - **Single-folder and multi-root workspaces** — a project opened as one folder reads its `.vscode` directory; a `.code-workspace` reads workspace-level `launch` / `tasks` plus every listed folder's `.vscode` files.
 - **VS Code variable substitution** — `${workspaceFolder}`, `${workspaceFolder:Name}`, `${workspaceFolderBasename}`, `${cwd}`, `${env:NAME}`, `${config:key}`, `${userHome}`, `${pathSeparator}` and `${/}`.
 - **Runs like the integrated terminal** — `cwd`, `env`, `args`, `preLaunchTask`, `dependsOn`, stdin and stop are supported. Output is streamed with ANSI escapes removed.
-- **Two entry points** — a floating dialog from the Session header (search, categories, project grouping, keyboard navigation) and a full page in the sidebar (workspace picker, run history, logs, stdin).
+- **One entry point, full run control** — the play icon in the Session header opens a dialog with search, categories, project grouping and keyboard navigation. After a start it switches to a runs view with live logs, stdin and stop, so no sidebar page is needed.
 - **Flutter device selection** — Dart configurations without `deviceId` use `flutter devices --machine`; one device is selected automatically, several become a picker.
 - **Agent tool** — the same engine is exposed as `vscode_launch` for listing, starting, stopping and inspecting runs from chat.
 
@@ -39,18 +39,20 @@ Then open **Settings → Plugins** and make sure **VS Code Runner** is enabled. 
 Click the **play icon** in the conversation header. The dialog lists launch configurations and tasks, grouped by the configuration's `cwd` (the sub-project), with search and category tabs.
 
 - `↑` / `↓` move the cursor, `Enter` runs, `Esc` closes.
-- A running item is marked green; clicking it opens the full run page.
+- A running item is marked green; clicking it opens the runs view.
 - A Dart configuration that needs a device opens the device picker.
-- **Open full run panel** jumps to the sidebar page.
 
-### Sidebar page
+### Runs view
 
-The **Run Configurations** row in the left panel list opens the full page:
+Starting a configuration switches the same dialog to the runs view, with the new run expanded:
 
-- pick a workspace at the top;
-- inspect warnings such as unresolved variables;
-- start a configuration, watch its live log, send stdin, or stop it;
-- reopen previous runs for the current workspace.
+- live output, with ANSI escapes removed;
+- **Stop** while a run is preparing, running or stopping;
+- an input box when the process accepts stdin (for example Flutter's `r` / `q`);
+- the **Runs** footer button reopens the run history for the current workspace;
+- **Back** returns to the configuration list.
+
+No separate sidebar page or navigation is needed.
 
 ### What is executed
 
@@ -135,7 +137,7 @@ Call `list` first and reuse the returned item `id` for `start`.
 - Every web route passes through `ctx.connection.requestRejection(req)` before it can read files or spawn a process. Unauthenticated, cross-site and Host/Origin-mismatched requests are rejected.
 - Launch configurations and tasks are executable code by design. Only use this plugin with workspaces you trust, and review `.code-workspace` / `.vscode` files before running them.
 - Environment variables are never returned to the browser: the catalog strips `env`.
-- The agent tool and the UI share one `Runner` instance, so a run started in chat appears in the sidebar.
+- The agent tool and the UI share one `Runner` instance, so a run started in chat appears in the same dialog.
 
 ## Limitations
 
@@ -165,7 +167,8 @@ The suite creates temporary single-folder and multi-root workspaces and covers:
 - same-directory workspace detection;
 - workspace-root resolution for session subdirectories;
 - POSIX and Windows argument quoting;
-- real subprocess execution: `preLaunchTask` + `dependsOn`, stdin, stop and the background-task guard.
+- real subprocess execution: `preLaunchTask` + `dependsOn`, stdin, stop and the background-task guard;
+- client module registration through a stubbed module loader.
 
 For implementation details, see [docs/internals.md](docs/internals.md).
 
@@ -175,7 +178,7 @@ For implementation details, see [docs/internals.md](docs/internals.md).
 | --- | --- |
 | `core.js` | JSONC parsing, workspace discovery, variable substitution, catalog compilation, process runner |
 | `index.js` | Host plugin: authenticated web routes and the `vscode_launch` agent tool |
-| `client.js` | Web UI: Session header dialog, sidebar icon/page, config list, run history, logs, input, device picker |
+| `client.js` | Web UI: Session header play icon, configuration dialog, runs view, logs, input, device picker |
 | `cordis.patch.yml` | Inserts the `vscode-runner` row into a DSH profile |
 | `locale/{en,zh}.json` | Plugin Manager title and description |
 | `icon.svg` | Plugin icon |

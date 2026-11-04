@@ -5,9 +5,9 @@ Developer notes for the host core, the web routes and the browser bundle. User d
 ## Layout
 
 ```
-index.js        Host plugin: Runner instance, 8 routes, vscode_launch tool
+index.js        Host plugin: Runner instance, 6 routes, vscode_launch tool
 core.js         JSONC, discovery, substitution, catalog compiler, process runner
-client.js       Browser module: Session header dialog, sidebar page, CSS
+client.js       Browser module: Session header dialog, runs view, CSS
 cordis.patch.yml  Adds the `vscode-runner` row to a profile
 test/run.mjs    Self-contained fixture + execution tests
 ```
@@ -21,9 +21,7 @@ test/run.mjs    Self-contained fixture + execution tests
     "platform": "web",
     "immediately": true,
     "inject": [
-      "@deepseek-ai/dsh-client-ui-layout",
-      "@deepseek-ai/dsh-client-ui-primitives",
-      "@deepseek-ai/dsh-client-ui-sidebar"
+      "@deepseek-ai/dsh-client-ui-primitives"
     ]
   }
 }
@@ -37,8 +35,6 @@ All routes share `/vscode-runner` and are registered with `ctx.webServer.registe
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/workspaces` | registered workspaces + selected default |
-| `GET` | `/catalog?cwd=` | launch/task catalog for one directory |
 | `GET` | `/session-catalog?sessionId=` | catalog resolved from a Session working directory |
 | `POST` | `/start` | `{ cwd, id, deviceId? }` |
 | `GET` | `/runs?cwd=` | run views for a workspace |
@@ -135,17 +131,15 @@ This is why the header dialog shows the whole project even when the agent's term
 
 ## Browser bundle
 
-`client.js` is a plain module-loader bundle, not an npm import graph. It exposes three slots:
+`client.js` is a plain module-loader bundle, not an npm import graph. It registers one slot:
 
-- `sidebar.panellist` — **Run Configurations** row and panel icon;
-- `main` — the full page (`RunnerPage`);
 - `conversation.session.header.actions` — the play-icon dialog (`SessionRunAction`).
 
-The dialog keeps search, category, collapsed groups, cursor and device state in component state. Runs are polled every 1.5 s while the dialog is open; the full page polls every 1.2 s. Both stop polling on unmount.
+The dialog keeps search, category, collapsed groups, cursor, device state and the runs view in component state. Runs are polled every 1.5 s while the dialog is open and polling stops on unmount.
 
 Styles are injected once as a `<style data-vscode-runner>` element by the apply effect and removed on unload. The component uses DSH design variables (`--dsw-alias-*`) so it follows the active theme.
 
-`openFullPanel` calls `layout.selectPanel('vscode-runner')`, so the dialog can jump to the sidebar page without a route change.
+Starting a configuration switches the dialog to the runs view and expands the new run. The **Back** button returns to the configuration list; there is no separate sidebar page.
 
 ## Testing
 
@@ -155,7 +149,7 @@ npm test
 
 Fixtures are created under `os.tmpdir()`, so the suite never reads the repository's own `.vscode` files. `spawnWithPipes` implements the small part of the DSH subprocess handle used by `Runner`: `stdin`, `collected.stdout/stderr.readFrom(offset)`, `done`, `terminate()`.
 
-CI runs the suite on Ubuntu and Windows with Node 20 and 22; macOS is the primary development machine and is tested locally. Execution tests that need POSIX `read`/`sleep` are skipped on Windows; compilation, discovery and quoting tests still run.
+CI runs the suite on Ubuntu and Windows with Node 20 and 22; macOS is the primary development machine and is tested locally. Execution tests that need POSIX `read`/`sleep` are skipped on Windows; compilation, discovery, quoting, client-bundle registration and host-wiring tests still run.
 
 ## Debugging
 

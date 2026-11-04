@@ -7,7 +7,6 @@ window.__ModuleLoader__.load({
     const { Modal } = require('@deepseek-ai/dsh-client-ui-primitives')
 
     const NS = 'vscodeRunner'
-    const PANEL_ID = 'vscode-runner'
 
     const zh = {
       title: '运行配置',
@@ -50,6 +49,9 @@ window.__ModuleLoader__.load({
       warnings: '提示',
       members: '成员：{names}',
       noRuns: '还没有运行记录。点击上方配置的「运行」后，这里会显示输出。',
+      runsEmptyTitle: '还没有运行记录',
+      runsEmptyBody: '先在上方启动一个配置，运行日志会出现在这里。',
+      runCount: '{count} 个运行',
       noWorkspace: '没有可用工作区',
       error: '操作失败',
       retry: '重试',
@@ -63,7 +65,6 @@ window.__ModuleLoader__.load({
       unknownItem: '该配置已变化，请刷新后重试。',
       active: '进行中',
       sessionAction: '运行配置',
-      openFullPanel: '打开完整运行面板',
       menuEmpty: '没有找到可运行的配置',
       menuStarting: '启动中…',
       sessionStarted: '已启动',
@@ -137,6 +138,9 @@ window.__ModuleLoader__.load({
       warnings: 'Notes',
       members: 'Members: {names}',
       noRuns: 'No runs yet. Press Run above and the output appears here.',
+      runsEmptyTitle: 'No runs yet',
+      runsEmptyBody: 'Start a configuration above and its log will appear here.',
+      runCount: '{count} runs',
       noWorkspace: 'No workspace available',
       error: 'Operation failed',
       retry: 'Retry',
@@ -150,7 +154,6 @@ window.__ModuleLoader__.load({
       unknownItem: 'This configuration changed. Refresh and try again.',
       active: 'Active',
       sessionAction: 'Run configuration',
-      openFullPanel: 'Open full run panel',
       menuEmpty: 'No runnable configuration found',
       menuStarting: 'Starting…',
       sessionStarted: 'Started',
@@ -184,7 +187,6 @@ window.__ModuleLoader__.load({
     }
 
     let translate = null
-    let openFullPanel = () => {}
 
     function fallbackTranslate(key, vars) {
       const template = zh[key] ?? en[key] ?? key
@@ -278,144 +280,9 @@ window.__ModuleLoader__.load({
     // Small presentational pieces
     // -----------------------------------------------------------------------
 
-    function PanelIcon(props) {
-      const size = typeof props?.size === 'number' ? props.size : 18
-      return h(
-        'svg',
-        {
-          width: size,
-          height: size,
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          'aria-hidden': true,
-          style: { display: 'block', color: 'currentColor' },
-        },
-        h('rect', {
-          x: 3.25,
-          y: 4.25,
-          width: 17.5,
-          height: 15.5,
-          rx: 4,
-          stroke: 'currentColor',
-          strokeWidth: 1.5,
-        }),
-        h('path', {
-          d: 'M9.6 8.5l6.4 3.5-6.4 3.5z',
-          fill: 'currentColor',
-          stroke: 'currentColor',
-          strokeWidth: 1.2,
-          strokeLinejoin: 'round',
-        }),
-      )
-    }
-
     function Badge(props) {
       const tone = props.tone ? ` is-${props.tone}` : ''
       return h('span', { className: `vsc-run-badge${tone}` }, props.children)
-    }
-
-    function DevicePicker(props) {
-      const { state, t, onPick, onClose } = props
-      return h(
-        'div',
-        { className: 'vsc-run-device' },
-        h('div', { className: 'vsc-run-device-title' }, t('device')),
-        state.loading ? h('div', { className: 'vsc-run-note' }, t('loadingDevices')) : null,
-        state.error ? h('div', { className: 'vsc-run-reason' }, `${t('deviceError')}${t('labelSeparator')}${state.error}`) : null,
-        !state.loading && state.devices.length > 0
-          ? h(
-              'div',
-              { className: 'vsc-run-device-list' },
-              state.devices.map((device) =>
-                h(
-                  'button',
-                  {
-                    key: device.id,
-                    type: 'button',
-                    className: 'vsc-run-btn',
-                    onClick: () => onPick(device),
-                  },
-                  `${device.name}${device.platform ? ` · ${device.platform}` : ''}`,
-                ),
-              ),
-            )
-          : null,
-        !state.loading && !state.error && state.devices.length === 0
-          ? h('div', { className: 'vsc-run-note' }, t('noDevices'))
-          : null,
-        h('button', { type: 'button', className: 'vsc-run-btn is-ghost', onClick: onClose }, t('dismiss')),
-      )
-    }
-
-    function ItemRow(props) {
-      const { item, t, active, busy, deviceMenu, onRun, onPickDevice, onCloseDevice } = props
-      const runnable = item.runnable !== false
-      const pending = active || busy
-      const showDevice = deviceMenu !== null && deviceMenu.itemId === item.id
-      const label = item.kind === 'task' ? t('runTask') : t('run')
-      const buttonLabel = !runnable
-        ? t('unsupported')
-        : busy
-          ? t('preparing')
-          : active
-            ? t('running')
-            : item.needsDevice && !item.deviceId
-              ? t('chooseDevice')
-              : label
-      return h(
-        'div',
-        { className: `vsc-run-item${runnable ? '' : ' is-disabled'}` },
-        h(
-          'div',
-          { className: 'vsc-run-item-row' },
-          h(
-            'div',
-            { className: 'vsc-run-item-body' },
-            h(
-              'div',
-              { className: 'vsc-run-item-title' },
-              h('span', { className: 'vsc-run-name' }, item.name),
-              item.kind === 'compound' ? h(Badge, { tone: 'accent' }, t('compound')) : null,
-              item.type ? h(Badge, null, typeLabel(item.type)) : null,
-              item.group ? h(Badge, { tone: 'muted' }, item.group) : null,
-              item.needsDevice && !item.deviceId ? h(Badge, { tone: 'warn' }, t('requiresDevice')) : null,
-              !runnable ? h(Badge, { tone: 'error' }, t('unsupported')) : null,
-            ),
-            item.command
-              ? h('code', { className: 'vsc-run-cmd', title: item.command }, item.command)
-              : null,
-            item.note ? h('div', { className: 'vsc-run-note' }, item.note) : null,
-            item.kind === 'compound' && Array.isArray(item.memberNames) && item.memberNames.length > 0
-              ? h('div', { className: 'vsc-run-note' }, t('members', { names: item.memberNames.join(t('listSeparator')) }))
-              : null,
-            !runnable && item.reason ? h('div', { className: 'vsc-run-reason' }, item.reason) : null,
-          ),
-          h(
-            'div',
-            { className: 'vsc-run-item-actions' },
-            pending ? h('span', { className: 'vsc-run-pending' }, active ? t('running') : t('preparing')) : null,
-            h(
-              'button',
-              {
-                type: 'button',
-                className: 'vsc-run-btn is-primary',
-                disabled: pending || !runnable || active,
-                onClick: () => onRun(item),
-                title: item.command || item.reason || item.name,
-              },
-              buttonLabel,
-            ),
-          ),
-        ),
-        showDevice
-          ? h(DevicePicker, {
-              state: deviceMenu,
-              t,
-              onPick: (device) => onPickDevice(item, device),
-              onClose: onCloseDevice,
-            })
-          : null,
-      )
     }
 
     function RunCard(props) {
@@ -502,496 +369,6 @@ window.__ModuleLoader__.load({
                 : null,
             )
           : null,
-      )
-    }
-
-    function groupBySource(items, sources) {
-      const sourceById = new Map((sources ?? []).map((source) => [source.id, source]))
-      const groups = new Map()
-      for (const item of items) {
-        let group = groups.get(item.sourceId)
-        if (group === undefined) {
-          group = { source: sourceById.get(item.sourceId), items: [] }
-          groups.set(item.sourceId, group)
-        }
-        group.items.push(item)
-      }
-      return [...groups.values()]
-    }
-
-    function ItemGroups(props) {
-      const { items, sources, t, activeItemIds, busyItem, deviceMenu, onRun, onPickDevice, onCloseDevice } = props
-      const groups = useMemo(() => groupBySource(items, sources), [items, sources])
-      return h(
-        React.Fragment,
-        null,
-        groups.map((group) => {
-          const source = group.source
-          const label = source ? source.label : ''
-          const pathText = source
-            ? source.kind === 'workspace'
-              ? source.path
-              : relativePath(source.base, source.path)
-            : ''
-          return h(
-            'div',
-            { className: 'vsc-run-group', key: source ? source.id : label },
-            h(
-              'div',
-              { className: 'vsc-run-group-head' },
-              h(
-                'span',
-                { className: 'vsc-run-group-label' },
-                source?.kind === 'workspace' ? h(Badge, { tone: 'muted' }, t('sourceWorkspace')) : null,
-                source?.kind === 'folder' ? h(Badge, { tone: 'muted' }, t('sourceFolder')) : null,
-                h('span', { className: 'vsc-run-group-name' }, label),
-              ),
-              pathText ? h('span', { className: 'vsc-run-source-path', title: source?.path }, pathText) : null,
-            ),
-            h(
-              'div',
-              { className: 'vsc-run-items' },
-              group.items.map((item) =>
-                h(ItemRow, {
-                  key: item.id,
-                  item,
-                  t,
-                  active: activeItemIds.has(item.id),
-                  busy: busyItem === item.id,
-                  deviceMenu,
-                  onRun,
-                  onPickDevice,
-                  onCloseDevice,
-                }),
-              ),
-            ),
-          )
-        }),
-      )
-    }
-
-    // -----------------------------------------------------------------------
-    // Page
-    // -----------------------------------------------------------------------
-
-    function RunnerPage(props) {
-      const t = useT(props)
-      const [workspaceInfo, setWorkspaceInfo] = useState({ workspaces: [], defaultCwd: '', selected: '' })
-      const [cwd, setCwd] = useState('')
-      const [catalog, setCatalog] = useState(null)
-      const [runs, setRuns] = useState([])
-      const [loading, setLoading] = useState(true)
-      const [error, setError] = useState('')
-      const [busyItem, setBusyItem] = useState('')
-      const [expanded, setExpanded] = useState(() => new Set())
-      const [deviceMenu, setDeviceMenu] = useState(null)
-      const [reloadToken, setReloadToken] = useState(0)
-      const [now, setNow] = useState(() => Date.now())
-
-      useEffect(() => {
-        let cancelled = false
-        ;(async () => {
-          try {
-            const data = await api('vscode-runner/workspaces')
-            if (cancelled) return
-            setWorkspaceInfo(data ?? { workspaces: [], defaultCwd: '', selected: '' })
-            const next = data?.selected || data?.defaultCwd || data?.workspaces?.[0]?.path || ''
-            setCwd(next)
-            if (next === '') setLoading(false)
-          } catch (cause) {
-            if (!cancelled) {
-              setError(cause.message)
-              setLoading(false)
-            }
-          }
-        })()
-        return () => {
-          cancelled = true
-        }
-      }, [])
-
-      useEffect(() => {
-        if (cwd === '') return
-        let cancelled = false
-        setLoading(true)
-        ;(async () => {
-          try {
-            const data = await api(`vscode-runner/catalog?cwd=${encodeURIComponent(cwd)}`)
-            if (cancelled) return
-            setCatalog(data)
-            setError('')
-            setLoading(false)
-          } catch (cause) {
-            if (cancelled) return
-            setCatalog(null)
-            setError(cause.message)
-            setLoading(false)
-          }
-        })()
-        return () => {
-          cancelled = true
-        }
-      }, [cwd, reloadToken])
-
-      useEffect(() => {
-        if (cwd === '') return
-        let cancelled = false
-        let timer = null
-        const tick = async () => {
-          try {
-            const data = await api(`vscode-runner/runs?cwd=${encodeURIComponent(cwd)}`)
-            if (!cancelled && Array.isArray(data?.runs)) setRuns(data.runs)
-          } catch {
-            // A transient read failure keeps the last rendered runs.
-          }
-          if (!cancelled) timer = setTimeout(tick, 1200)
-        }
-        tick()
-        return () => {
-          cancelled = true
-          if (timer !== null) clearTimeout(timer)
-        }
-      }, [cwd, reloadToken])
-
-      useEffect(() => {
-        setRuns([])
-        setExpanded(new Set())
-        setDeviceMenu(null)
-      }, [cwd])
-
-      useEffect(() => {
-        const timer = setInterval(() => setNow(Date.now()), 1000)
-        return () => clearInterval(timer)
-      }, [])
-
-      async function refreshRuns() {
-        if (cwd === '') return
-        try {
-          const data = await api(`vscode-runner/runs?cwd=${encodeURIComponent(cwd)}`)
-          if (Array.isArray(data?.runs)) setRuns(data.runs)
-        } catch {
-          // Keep the current list.
-        }
-      }
-
-      async function doStart(item, deviceId) {
-        if (busyItem !== '') return
-        setBusyItem(item.id)
-        setError('')
-        try {
-          const body = { cwd, id: item.id }
-          if (deviceId !== undefined && deviceId !== '') body.deviceId = deviceId
-          const data = await api('vscode-runner/start', {
-            method: 'POST',
-            body: JSON.stringify(body),
-          })
-          const started = Array.isArray(data?.runs) ? data.runs : []
-          if (started.length > 0) {
-            setExpanded((previous) => {
-              const next = new Set(previous)
-              for (const run of started) next.add(run.id)
-              return next
-            })
-            setRuns((previous) => [...started, ...previous])
-          }
-          await refreshRuns()
-        } catch (cause) {
-          if (cause.code === 'device-required') {
-            setBusyItem('')
-            await openDevice(item)
-          } else if (cause.code === 'not-runnable') {
-            setError(cause.message)
-          } else if (cause.code === 'unknown-item') {
-            setError(t('unknownItem'))
-          } else {
-            setError(cause.message)
-          }
-        } finally {
-          setBusyItem('')
-        }
-      }
-
-      async function openDevice(item) {
-        setDeviceMenu({ itemId: item.id, loading: true, devices: [], error: '' })
-        try {
-          const data = await api(`vscode-runner/devices?cwd=${encodeURIComponent(cwd)}`)
-          const devices = Array.isArray(data?.devices) ? data.devices : []
-          if (data?.error) {
-            setDeviceMenu({ itemId: item.id, loading: false, devices, error: data.error })
-            return
-          }
-          if (devices.length === 1) {
-            setDeviceMenu(null)
-            await doStart(item, devices[0].id)
-            return
-          }
-          setDeviceMenu({ itemId: item.id, loading: false, devices, error: '' })
-        } catch (cause) {
-          setDeviceMenu({ itemId: item.id, loading: false, devices: [], error: cause.message })
-        }
-      }
-
-      function handleRun(item) {
-        if (item.needsDevice && !item.deviceId) {
-          void openDevice(item)
-          return
-        }
-        void doStart(item)
-      }
-
-      function handlePickDevice(item, device) {
-        setDeviceMenu(null)
-        void doStart(item, device.id)
-      }
-
-      async function handleStop(run) {
-        try {
-          await api('vscode-runner/stop', {
-            method: 'POST',
-            body: JSON.stringify({ runId: run.id }),
-          })
-          await refreshRuns()
-        } catch (cause) {
-          setError(cause.message)
-        }
-      }
-
-      async function handleInput(run, text) {
-        try {
-          await api('vscode-runner/input', {
-            method: 'POST',
-            body: JSON.stringify({ runId: run.id, data: text }),
-          })
-        } catch (cause) {
-          setError(cause.message)
-        }
-        await refreshRuns()
-      }
-
-      function toggleRun(runId) {
-        setExpanded((previous) => {
-          const next = new Set(previous)
-          if (next.has(runId)) next.delete(runId)
-          else next.add(runId)
-          return next
-        })
-      }
-
-      function refresh() {
-        setError('')
-        setReloadToken((value) => value + 1)
-      }
-
-      const activeItemIds = useMemo(
-        () =>
-          new Set(
-            runs
-              .filter(
-                (run) =>
-                  run.status === 'preparing' || run.status === 'running' || run.status === 'stopping',
-              )
-              .map((run) => run.itemId),
-          ),
-        [runs],
-      )
-
-      const launches = catalog?.launches ?? []
-      const tasks = catalog?.tasks ?? []
-      const sources = catalog?.sources ?? []
-      const workspaces = workspaceInfo.workspaces ?? []
-      const workspacePath = catalog?.cwd ?? cwd
-      const configFile = catalog?.workspace?.file
-      const empty = catalog !== null && launches.length === 0 && tasks.length === 0
-
-      return h(
-        React.Fragment,
-        null,
-        h(
-          'div',
-          { className: 'vsc-run-page' },
-          h(
-            'div',
-            { className: 'vsc-run-wrap' },
-            h(
-              'header',
-              { className: 'vsc-run-header' },
-              h(
-                'div',
-                { className: 'vsc-run-heading' },
-                h('h1', { className: 'vsc-run-title' }, t('title')),
-                h('p', { className: 'vsc-run-subtitle' }, t('subtitle')),
-              ),
-              h(
-                'div',
-                { className: 'vsc-run-toolbar' },
-                h(
-                  'label',
-                  { className: 'vsc-run-field' },
-                  h('span', { className: 'vsc-run-field-label' }, t('workspace')),
-                  h(
-                    'select',
-                    {
-                      className: 'vsc-run-select',
-                      value: cwd,
-                      disabled: workspaces.length === 0,
-                      onChange: (event) => {
-                        setDeviceMenu(null)
-                        setCwd(event.target.value)
-                      },
-                    },
-                    workspaces.length === 0
-                      ? h('option', { value: '' }, t('noWorkspace'))
-                      : workspaces.map((workspace) =>
-                          h(
-                            'option',
-                            { key: workspace.path, value: workspace.path },
-                            workspace.title || workspace.path,
-                          ),
-                        ),
-                  ),
-                ),
-                h(
-                  'button',
-                  { type: 'button', className: 'vsc-run-btn', onClick: refresh, disabled: loading },
-                  loading ? t('loading') : t('refresh'),
-                ),
-              ),
-            ),
-            error !== ''
-              ? h(
-                  'div',
-                  { className: 'vsc-run-error' },
-                  h('span', null, `${t('error')}${t('labelSeparator')}${error}`),
-                  h(
-                    'button',
-                    { type: 'button', className: 'vsc-run-btn is-ghost', onClick: () => setError('') },
-                    t('dismiss'),
-                  ),
-                )
-              : null,
-            workspacePath !== ''
-              ? h(
-                  'div',
-                  { className: 'vsc-run-meta' },
-                  configFile
-                    ? h(
-                        'span',
-                        { title: configFile },
-                        `${t('workspaceFile')}${t('labelSeparator')}${baseName(configFile)}`,
-                      )
-                    : h('span', null, t('singleFolder')),
-                  h('span', { className: 'vsc-run-meta-sep' }, '·'),
-                  h('span', { title: workspacePath }, workspacePath),
-                  catalog?.workspace?.folders?.length > 1
-                    ? h(
-                        React.Fragment,
-                        null,
-                        h('span', { className: 'vsc-run-meta-sep' }, '·'),
-                        h('span', null, t('folders', { count: catalog.workspace.folders.length })),
-                      )
-                    : null,
-                )
-              : null,
-            catalog?.warnings?.length > 0
-              ? h(
-                  'details',
-                  { className: 'vsc-run-warnings' },
-                  h('summary', null, `${t('warnings')} (${catalog.warnings.length})`),
-                  h(
-                    'ul',
-                    null,
-                    catalog.warnings.map((warning, index) => h('li', { key: index }, warning)),
-                  ),
-                )
-              : null,
-            loading && catalog === null
-              ? h('div', { className: 'vsc-run-loading' }, t('loading'))
-              : null,
-            empty
-              ? h(
-                  'div',
-                  { className: 'vsc-run-empty' },
-                  h('div', { className: 'vsc-run-empty-title' }, t('emptyTitle')),
-                  h('div', { className: 'vsc-run-empty-body' }, t('emptyBody')),
-                )
-              : null,
-            !empty && launches.length > 0
-              ? h(
-                  'section',
-                  { className: 'vsc-run-section' },
-                  h(
-                    'div',
-                    { className: 'vsc-run-section-head' },
-                    h('h2', { className: 'vsc-run-section-title' }, t('launchConfigs')),
-                    h('span', { className: 'vsc-run-count' }, launches.length),
-                  ),
-                  h(ItemGroups, {
-                    items: launches,
-                    sources,
-                    t,
-                    activeItemIds,
-                    busyItem,
-                    deviceMenu,
-                    onRun: handleRun,
-                    onPickDevice: handlePickDevice,
-                    onCloseDevice: () => setDeviceMenu(null),
-                  }),
-                )
-              : null,
-            !empty && tasks.length > 0
-              ? h(
-                  'section',
-                  { className: 'vsc-run-section' },
-                  h(
-                    'div',
-                    { className: 'vsc-run-section-head' },
-                    h('h2', { className: 'vsc-run-section-title' }, t('tasks')),
-                    h('span', { className: 'vsc-run-count' }, tasks.length),
-                  ),
-                  h(ItemGroups, {
-                    items: tasks,
-                    sources,
-                    t,
-                    activeItemIds,
-                    busyItem,
-                    deviceMenu,
-                    onRun: handleRun,
-                    onPickDevice: handlePickDevice,
-                    onCloseDevice: () => setDeviceMenu(null),
-                  }),
-                )
-              : null,
-            h(
-              'section',
-              { className: 'vsc-run-section' },
-              h(
-                'div',
-                { className: 'vsc-run-section-head' },
-                h('h2', { className: 'vsc-run-section-title' }, t('runs')),
-                runs.length > 0 ? h('span', { className: 'vsc-run-count' }, runs.length) : null,
-              ),
-              runs.length === 0
-                ? h('div', { className: 'vsc-run-note vsc-run-runs-empty' }, t('noRuns'))
-                : h(
-                    'div',
-                    { className: 'vsc-run-runs' },
-                    runs.map((run) =>
-                      h(RunCard, {
-                        key: run.id,
-                        run,
-                        t,
-                        now,
-                        expanded: expanded.has(run.id),
-                        onToggle: toggleRun,
-                        onStop: handleStop,
-                        onInput: handleInput,
-                      }),
-                    ),
-                  ),
-            ),
-            h('p', { className: 'vsc-run-disclaimer' }, t('disclaimer')),
-          ),
-        ),
       )
     }
 
@@ -1615,6 +992,9 @@ window.__ModuleLoader__.load({
       const [runs, setRuns] = useState([])
       const [hasMore, setHasMore] = useState(false)
       const [flash, setFlash] = useState(false)
+      const [panel, setPanel] = useState('configs')
+      const [now, setNow] = useState(() => Date.now())
+      const [expandedRuns, setExpandedRuns] = useState(() => new Set())
       const buttonRef = useRef(null)
       const searchRef = useRef(null)
       const bodyRef = useRef(null)
@@ -1706,6 +1086,8 @@ window.__ModuleLoader__.load({
         setCursor(0)
         setRuns([])
         setFlash(false)
+        setPanel('configs')
+        setExpandedRuns(new Set())
       }, [sessionId])
 
       useEffect(() => {
@@ -1727,6 +1109,12 @@ window.__ModuleLoader__.load({
           if (timer !== null) clearTimeout(timer)
         }
       }, [open, menuCwd])
+
+      useEffect(() => {
+        if (!open) return undefined
+        const timer = setInterval(() => setNow(Date.now()), 1000)
+        return () => clearInterval(timer)
+      }, [open])
 
       useEffect(() => {
         setCursor(0)
@@ -1759,7 +1147,7 @@ window.__ModuleLoader__.load({
         }
         const frame = window.requestAnimationFrame(updateScrollFade)
         return () => window.cancelAnimationFrame(frame)
-      }, [open, view.flat.length, query, kindFilter, deviceFor, loading, catalog])
+      }, [open, panel, view.flat.length, query, kindFilter, deviceFor, loading, catalog])
 
       useEffect(() => {
         if (kindFilter === 'launch' && launches.length === 0) setKindFilter('all')
@@ -1778,6 +1166,8 @@ window.__ModuleLoader__.load({
         setQuery('')
         setKindFilter('all')
         setCursor(0)
+        setPanel('configs')
+        setExpandedRuns(new Set())
       }
 
       async function load() {
@@ -1808,11 +1198,12 @@ window.__ModuleLoader__.load({
         setQuery('')
         setKindFilter('all')
         setCursor(0)
-        setRuns([])
         setError('')
         setDeviceFor(null)
         setDeviceState(null)
         setCollapsedGroups(new Set())
+        setPanel('configs')
+        setExpandedRuns(new Set())
         void load()
       }
 
@@ -1840,9 +1231,22 @@ window.__ModuleLoader__.load({
         try {
           const body = { cwd: menuCwd, id: item.id }
           if (deviceId !== undefined && deviceId !== '') body.deviceId = deviceId
-          await api('vscode-runner/start', { method: 'POST', body: JSON.stringify(body) })
-          close()
+          const data = await api('vscode-runner/start', { method: 'POST', body: JSON.stringify(body) })
+          const started = Array.isArray(data?.runs) ? data.runs : []
+          if (started.length > 0) {
+            const startedIds = new Set(started.map((run) => run.id))
+            setRuns((previous) => [...started, ...previous.filter((run) => !startedIds.has(run.id))])
+            setExpandedRuns((previous) => {
+              const next = new Set(previous)
+              for (const run of started) next.add(run.id)
+              return next
+            })
+          }
+          setPanel('runs')
           markStarted()
+          window.requestAnimationFrame(() => {
+            if (bodyRef.current !== null) bodyRef.current.scrollTop = 0
+          })
         } catch (cause) {
           busyRef.current = false
           setBusyId('')
@@ -1882,6 +1286,65 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function refreshRuns() {
+        if (menuCwd === '') return
+        try {
+          const data = await api(`vscode-runner/runs?cwd=${encodeURIComponent(menuCwd)}`)
+          if (Array.isArray(data?.runs)) setRuns(data.runs)
+        } catch {
+          // Keep the last known run list; polling will retry.
+        }
+      }
+
+      function openRuns() {
+        setPanel('runs')
+        setExpandedRuns((previous) => {
+          const next = new Set(previous)
+          for (const run of runs) {
+            if (run.status === 'preparing' || run.status === 'running' || run.status === 'stopping') {
+              next.add(run.id)
+            }
+          }
+          return next
+        })
+        window.requestAnimationFrame(() => {
+          if (bodyRef.current !== null) bodyRef.current.scrollTop = 0
+        })
+      }
+
+      function toggleRun(runId) {
+        setExpandedRuns((previous) => {
+          const next = new Set(previous)
+          if (next.has(runId)) next.delete(runId)
+          else next.add(runId)
+          return next
+        })
+      }
+
+      async function handleStop(run) {
+        try {
+          await api('vscode-runner/stop', {
+            method: 'POST',
+            body: JSON.stringify({ runId: run.id }),
+          })
+          await refreshRuns()
+        } catch (cause) {
+          setError(cause.message)
+        }
+      }
+
+      async function handleInput(run, text) {
+        try {
+          await api('vscode-runner/input', {
+            method: 'POST',
+            body: JSON.stringify({ runId: run.id, data: text }),
+          })
+        } catch (cause) {
+          setError(cause.message)
+        }
+        await refreshRuns()
+      }
+
       function pick(item) {
         if (busyId !== '') return
         if (item.runnable === false) {
@@ -1889,7 +1352,7 @@ window.__ModuleLoader__.load({
           return
         }
         if (activeItemIds.has(item.id)) {
-          openPanel()
+          openRuns()
           return
         }
         if (item.needsDevice && !item.deviceId) {
@@ -1897,11 +1360,6 @@ window.__ModuleLoader__.load({
           return
         }
         void doStart(item)
-      }
-
-      function openPanel() {
-        close()
-        openFullPanel()
       }
 
       function toggleGroup(group) {
@@ -1951,7 +1409,7 @@ window.__ModuleLoader__.load({
 
       function onDialogKeyDown(event) {
         if (event.defaultPrevented || event.nativeEvent?.isComposing) return
-        if (deviceFor !== null) return
+        if (deviceFor !== null || panel !== 'configs') return
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
           event.preventDefault()
           moveCursor(event.key === 'ArrowDown' ? 1 : -1)
@@ -1970,13 +1428,15 @@ window.__ModuleLoader__.load({
       const hasConfigs = view.total > 0
       const activeCount = activeItemIds.size
       const summary =
-        loading && catalog === null
-          ? t('loadingConfigs')
-          : error !== '' && catalog === null
-            ? t('error')
-            : hasConfigs
-              ? t('sessionSummary', { launches: launches.length, tasks: tasks.length })
-              : t('menuEmpty')
+        panel === 'runs'
+          ? t('runCount', { count: runs.length })
+          : loading && catalog === null
+            ? t('loadingConfigs')
+            : error !== '' && catalog === null
+              ? t('error')
+              : hasConfigs
+                ? t('sessionSummary', { launches: launches.length, tasks: tasks.length })
+                : t('menuEmpty')
       const tabs =
         launches.length > 0 && tasks.length > 0
           ? [
@@ -1985,7 +1445,11 @@ window.__ModuleLoader__.load({
               { id: 'task', label: t('filterTask'), count: tasks.length },
             ]
           : []
-      const title = flash ? t('sessionStarted') : t('sessionAction')
+      const title = flash
+        ? t('sessionStarted')
+        : panel === 'runs'
+          ? t('runs')
+          : t('sessionAction')
 
       let body = null
       if (deviceFor !== null && deviceState !== null) {
@@ -2009,6 +1473,60 @@ window.__ModuleLoader__.load({
           },
           backRef: deviceBackRef,
         })
+      } else if (panel === 'runs') {
+        body = h(
+          'div',
+          { className: 'vsc-run-runs-view' },
+          error !== ''
+            ? h(
+                'div',
+                { className: 'vsc-run-dialog-error', role: 'alert' },
+                h(Glyph, { name: 'warning', size: 14 }),
+                h('span', { className: 'vsc-run-dialog-error-text' }, error),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'vsc-run-dialog-error-retry',
+                    onClick: () => setError(''),
+                  },
+                  t('dismiss'),
+                ),
+              )
+            : null,
+          runs.length === 0
+            ? h(DialogEmpty, {
+                icon: 'terminal',
+                title: t('runsEmptyTitle'),
+                body: t('runsEmptyBody'),
+              })
+            : h(
+                React.Fragment,
+                null,
+                h(
+                  'div',
+                  { className: 'vsc-run-section-head' },
+                  h('h2', { className: 'vsc-run-section-title' }, t('runs')),
+                  h('span', { className: 'vsc-run-count' }, String(runs.length)),
+                ),
+                h(
+                  'div',
+                  { className: 'vsc-run-runs' },
+                  runs.map((run) =>
+                    h(RunCard, {
+                      key: run.id,
+                      run,
+                      t,
+                      now,
+                      expanded: expandedRuns.has(run.id),
+                      onToggle: toggleRun,
+                      onStop: handleStop,
+                      onInput: handleInput,
+                    }),
+                  ),
+                ),
+              ),
+        )
       } else if (loading && catalog === null) {
         body = h(DialogSkeleton)
       } else if (error !== '' && catalog === null) {
@@ -2068,7 +1586,7 @@ window.__ModuleLoader__.load({
                   type: 'button',
                   className: 'vsc-run-active-strip',
                   title: t('activeRunsHint'),
-                  onClick: openPanel,
+                  onClick: openRuns,
                 },
                 h('span', { className: 'vsc-run-pulse' }),
                 h('span', { className: 'vsc-run-active-text' }, t('activeRuns', { count: activeCount })),
@@ -2134,7 +1652,11 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'vsc-run-dialog-heading' },
-          h('div', { className: 'vsc-run-dialog-title' }, t('sessionAction')),
+          h(
+            'div',
+            { className: 'vsc-run-dialog-title' },
+            panel === 'runs' ? t('runs') : t('sessionAction'),
+          ),
           h(
             'div',
             { className: 'vsc-run-dialog-sub' },
@@ -2162,7 +1684,8 @@ window.__ModuleLoader__.load({
               'aria-label': t('refresh'),
               disabled: loading || busyId !== '',
               onClick: () => {
-                void load()
+                if (panel === 'runs') void refreshRuns()
+                else void load()
               },
             },
             loading ? h(Spinner) : h(Glyph, { name: 'refresh', size: 15 }),
@@ -2182,7 +1705,7 @@ window.__ModuleLoader__.load({
       )
 
       const toolbar =
-        catalog !== null && hasConfigs && deviceFor === null
+        panel === 'configs' && catalog !== null && hasConfigs && deviceFor === null
           ? h(
               'div',
               { className: 'vsc-run-dialog-toolbar' },
@@ -2251,27 +1774,54 @@ window.__ModuleLoader__.load({
           h(
             'span',
             { className: 'vsc-run-foot-count' },
-            loading && catalog === null
-              ? t('loading')
-              : catalog === null
-                ? '—'
-                : view.flat.length !== view.total
-                  ? t('shownCount', { shown: view.flat.length, total: view.total })
-                  : t('configCount', { count: view.total }),
+            panel === 'runs'
+              ? t('runCount', { count: runs.length })
+              : loading && catalog === null
+                ? t('loading')
+                : catalog === null
+                  ? '—'
+                  : view.flat.length !== view.total
+                    ? t('shownCount', { shown: view.flat.length, total: view.total })
+                    : t('configCount', { count: view.total }),
           ),
         ),
         h(
           'div',
           { className: 'vsc-run-foot-actions' },
-          deviceFor === null && view.flat.length > 0
-            ? h('span', { className: 'vsc-run-hint', 'aria-hidden': true }, t('modalHint'))
-            : null,
-          h(
-            'button',
-            { type: 'button', className: 'vsc-run-open-panel', onClick: openPanel },
-            h('span', null, t('openFullPanel')),
-            h(Glyph, { name: 'arrow-right', size: 12 }),
-          ),
+          panel === 'runs'
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'vsc-run-open-panel',
+                  onClick: () => {
+                    setPanel('configs')
+                    focusSearchPending.current = true
+                    window.requestAnimationFrame(() => searchRef.current?.focus?.())
+                  },
+                },
+                h('span', null, t('back')),
+              )
+            : h(
+                React.Fragment,
+                null,
+                deviceFor === null && view.flat.length > 0
+                  ? h('span', { className: 'vsc-run-hint', 'aria-hidden': true }, t('modalHint'))
+                  : null,
+                runs.length > 0
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'vsc-run-open-panel',
+                        onClick: openRuns,
+                      },
+                      h('span', null, t('runs')),
+                      h('span', { className: 'vsc-run-foot-badge' }, String(runs.length)),
+                      h(Glyph, { name: 'arrow-right', size: 12 }),
+                    )
+                  : null,
+              ),
         ),
       )
 
@@ -2296,7 +1846,7 @@ window.__ModuleLoader__.load({
           Modal,
           {
             open,
-            title: t('sessionAction'),
+            title: panel === 'runs' ? t('runs') : t('sessionAction'),
             closeLabel: t('dismiss'),
             onClose: close,
             headless: true,
@@ -2391,6 +1941,7 @@ window.__ModuleLoader__.load({
 .vsc-run-device{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;border-top:1px dashed var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2)}
 .vsc-run-device-title{color:var(--dsw-alias-label-secondary);font-size:11px}
 .vsc-run-device-list{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vsc-run-runs-view{display:flex;flex-direction:column;gap:10px;padding:2px 10px 8px}
 .vsc-run-runs{display:flex;flex-direction:column;gap:8px}
 .vsc-run-runs-empty{padding:6px 0 2px}
 .vsc-run-run{border:1px solid var(--dsw-alias-border-l1);border-radius:9px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
@@ -2567,6 +2118,7 @@ window.__ModuleLoader__.load({
 .vsc-run-foot-count{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vsc-run-foot-actions{display:flex;align-items:center;gap:10px;flex:none}
 .vsc-run-hint{color:var(--dsw-alias-label-tertiary);font-size:10.5px;line-height:17px;white-space:nowrap}
+.vsc-run-foot-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 5px;border-radius:8px;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary);font-size:10px;line-height:16px}
 .vsc-run-open-panel{box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:1px solid var(--dsw-alias-border-l1);border-radius:7px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:11.5px;white-space:nowrap;cursor:pointer;transition:background .12s ease,border-color .12s ease}
 .vsc-run-open-panel:hover{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-border-l2)}
 .vsc-run-open-panel:focus-visible{outline:2px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}
@@ -2589,38 +2141,6 @@ window.__ModuleLoader__.load({
           return () => style.remove()
         }, 'vscode-runner: styles')
         translate = ctx.locale.bind(NS)
-        const layout = ctx.get('layout')
-        openFullPanel = () => {
-          try {
-            layout?.selectPanel(PANEL_ID)
-          } catch {
-            // The panel is normally registered; a missing one is a no-op.
-          }
-        }
-
-        ctx.slots.inject('sidebar.panellist', () =>
-          ctx.slots.register(
-            {
-              name: 'sidebar.panellist',
-              id: PANEL_ID,
-              order: 20,
-              label: () => translate('title'),
-            },
-            PanelIcon,
-          ),
-        )
-
-        ctx.slots.inject('main', () =>
-          ctx.slots.register(
-            {
-              name: 'main',
-              key: PANEL_ID,
-              locale: NS,
-            },
-            RunnerPage,
-          ),
-        )
-
         ctx.slots.inject('conversation.session.header.actions', () =>
           ctx.slots.register(
             {

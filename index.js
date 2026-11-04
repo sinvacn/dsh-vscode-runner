@@ -1,7 +1,7 @@
 /**
  * Host half of the VS Code runner bundle.
  *
- * It exposes the catalog and run controls as eight same-origin web routes
+ * It exposes the catalog and run controls as six same-origin web routes
  * (the browser half fetches them) and as one agent tool. Every route passes
  * through the composition's Connection trust fence, exactly like the shipped
  * open-in-app feature, so an unauthenticated or foreign-origin request never
@@ -268,26 +268,6 @@ export function apply(ctx) {
       label,
     )
   }
-
-  route(
-    `${BASE}/workspaces`,
-    'GET',
-    async (_req, res) => {
-      sendJson(res, 200, await runner.workspaces())
-    },
-    `vscode-runner: GET ${BASE}/workspaces`,
-  )
-
-  route(
-    `${BASE}/catalog`,
-    'GET',
-    async (req, res) => {
-      const cwd = queryOf(req).get('cwd') || runner.defaultCwd
-      const catalog = await runner.catalog(cwd)
-      sendJson(res, 200, publicCatalog(catalog))
-    },
-    `vscode-runner: GET ${BASE}/catalog`,
-  )
 
   route(
     `${BASE}/session-catalog`,
