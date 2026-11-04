@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "VS Code 运行器",
+    "description": "列出 .code-workspace、.vscode/launch.json 与 tasks.json 中的启动配置、复合配置和任务，并在 Harness 侧边栏或会话标题栏中一键执行。"
+  }
+}

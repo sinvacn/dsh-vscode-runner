@@ -1,0 +1,62 @@
+{
+  "name": "dsh-vscode-runner",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Run VS Code launch configurations, compounds and tasks from the DeepSeek Harness Web UI.",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "core.js",
+    "client.js",
+    "README.md",
+    "README.zh.md",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "scripts": {
+    "test": "node test/run.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "license": "MIT",
+  "author": "Sinva",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sinvacn/dsh-vscode-runner.git"
+  },
+  "homepage": "https://github.com/sinvacn/dsh-vscode-runner#readme",
+  "bugs": {
+    "url": "https://github.com/sinvacn/dsh-vscode-runner/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "vscode",
+    "launch-json",
+    "tasks-json",
+    "run-configurations",
+    "developer-tools"
+  ]
+}

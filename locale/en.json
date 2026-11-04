@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "VS Code Runner",
+    "description": "Lists launch configurations, compounds and tasks from .code-workspace, .vscode/launch.json and tasks.json, and runs them from the Harness sidebar or Session header."
+  }
+}
